@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebLab Модуль 1 — Тренажёр HTTP, Cookies, Статус-коды и DevTools</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-badge">WEBLAB • МОДУЛЬ 1</span>
+        <h1>Практикум: HTTP, Статус-коды, Cookies, JWT и DevTools (F12)</h1>
+        <p class="brand-sub">Учебный локальный сервер к книге. Все запросы настоящие — открывай <code>F12 → Network</code> и наблюдай за каждым кликом!</p>
+      </div>
+      <div class="topbar-actions">
+        <div class="devtools-tip">
+          <strong>Памятка F12:</strong> открой вкладку <code>Network</code>, включи <code>Keep log</code> (в старых версиях <code>Preserve log</code>) и кликай по названию запроса справа → <code>Headers</code> / <code>Response</code>.
+        </div>
+        <div class="quest-pill-wrap">
+          <span id="questProgressBadge" class="quest-badge">Квесты: 0 / 6</span>
+          <button id="btnResetQuests" type="button" class="btn btn-ghost btn-sm" title="Сбросить прогресс квестов">Сброс</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div id="redirectBanner" class="redirect-banner hidden">
+    <div>
+      <strong>Ты вернулся после настоящего редиректа 302!</strong>
+      Открой <code>F12 → Network</code>: если была включена галочка <code>Keep log</code>, в самом верху списка сохранилась строчка <code>302-page</code> со статусом <strong>302</strong>. Квест №3 засчитан!
+    </div>
+    <button id="btnCloseRedirectBanner" type="button" class="btn btn-sm btn-ghost">Понятно</button>
+  </div>
+
+  <nav class="tabs-bar" aria-label="Разделы тренажёра">
+    <button type="button" class="tab-btn active" data-tab="methods">1. HTTP-методы</button>
+    <button type="button" class="tab-btn" data-tab="statuses">2. Статус-коды</button>
+    <button type="button" class="tab-btn" data-tab="auth">3. Cookies, Сессии и JWT</button>
+    <button type="button" class="tab-btn" data-tab="clientserver">4. Клиент vs Сервер</button>
+    <button type="button" class="tab-btn" id="tabQuestsBtn" data-tab="quests">5. Квесты F12 (0/6)</button>
+  </nav>
+
+  <main class="layout">
+    <section class="workspace">
+      <!-- ============================================================ -->
+      <!-- ВКЛАДКА 1: HTTP-МЕТОДЫ -->
+      <!-- ============================================================ -->
+      <div id="tab-methods" class="tab-panel active">
+        <div class="card">
+          <div class="card-head">
+            <h2>1A. Метод GET — чтение и поиск через URL-параметры</h2>
+            <span class="tag tag-blue">GET</span>
+          </div>
+          <p class="muted">Параметры поиска передаются прямо в адресе (<code>?q=...&amp;category=...</code>), а не в теле запроса. Попробуй также передать свой заголовок <code>X-Student-Tag</code> и найди его в <code>Network → Headers → Request Headers</code>.</p>
+          <div class="form-row">
+            <label class="field">
+              <span>Поисковый запрос (q)</span>
+              <input id="getSearchQ" type="text" placeholder="Например: Cookie, JWT, 302..." value="">
+            </label>
+            <label class="field">
+              <span>Категория (category)</span>
+              <select id="getSearchCat">
+                <option value="all">Все (all)</option>
+                <option value="http">HTTP (http)</option>
+                <option value="status">Статус-коды (status)</option>
+                <option value="auth">Cookies и JWT (auth)</option>
+                <option value="security">Безопасность (security)</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Свой заголовок X-Student-Tag</span>
+              <input id="getStudentTag" type="text" value="novice-01">
+            </label>
+          </div>
+          <button id="btnRunGet" type="button" class="btn btn-primary">Отправить GET-запрос</button>
+          <div id="getResults" class="topic-grid"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>1B. Методы POST, PUT и DELETE — управление заметками на сервере</h2>
+            <div class="tag-group">
+              <span class="tag tag-green">POST 201</span>
+              <span class="tag tag-amber">PUT 200</span>
+              <span class="tag tag-red">DELETE 200</span>
+            </div>
+          </div>
+          <p class="muted">При создании заметки данные улетают в <strong>теле запроса (Body / Payload)</strong> в формате JSON, а сервер возвращает статус <code>201 Created</code>.</p>
+          <div class="form-row">
+            <label class="field">
+              <span>Заголовок заметки (title)</span>
+              <input id="noteTitle" type="text" placeholder="Например: Проверить статус 403">
+            </label>
+            <label class="field field-wide">
+              <span>Текст заметки (text)</span>
+              <input id="noteText" type="text" placeholder="Короткая заметка для проверки POST">
+            </label>
+          </div>
+          <div class="btn-row">
+            <button id="btnCreateNote" type="button" class="btn btn-success">Создать заметку (POST)</button>
+            <button id="btnReloadNotes" type="button" class="btn btn-ghost">Обновить список (GET)</button>
+          </div>
+          <div id="notesList" class="notes-list"></div>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- ВКЛАДКА 2: СТАТУС-КОДЫ -->
+      <!-- ============================================================ -->
+      <div id="tab-statuses" class="tab-panel">
+        <div class="card">
+          <div class="card-head">
+            <h2>2. Полигон настоящих HTTP статус-кодов</h2>
+            <span class="tag tag-cyan">2xx / 3xx / 4xx / 5xx</span>
+          </div>
+          <p class="muted">Нажимай на кнопки и наблюдай, как меняется цветная строчка статуса в колонке <code>Status</code> в DevTools → <code>Network</code> и в «Зеркале ответа» справа.</p>
+
+          <div class="status-groups">
+            <div class="status-group">
+              <h3>2xx — Успех</h3>
+              <div class="btn-row">
+                <button id="btnSt200" type="button" class="btn btn-st st-2xx">200 OK</button>
+                <button id="btnSt201" type="button" class="btn btn-st st-2xx">201 Created (POST)</button>
+              </div>
+            </div>
+
+            <div class="status-group">
+              <h3>3xx — Перенаправление и Кэш</h3>
+              <div class="btn-row">
+                <button id="btnSt302" type="button" class="btn btn-st st-3xx">302 (API-редирект)</button>
+                <button id="btnSt302Page" type="button" class="btn btn-st st-3xx">302 (Редирект страницы — проверь Keep log!)</button>
+                <button id="btnSt304" type="button" class="btn btn-st st-3xx">304 (Кэш ETag — нажми 2 раза!)</button>
+              </div>
+              <p class="micro-hint">Для проверки <code>304</code> убедись, что галочка <code>Disable cache</code> в DevTools <strong>снята</strong>. А для <code>302 (Редирект страницы)</code> сначала поставь галочку <code>Keep log</code>!</p>
+            </div>
+
+            <div class="status-group">
+              <h3>4xx — Ошибки клиента / доступа / лимита</h3>
+              <div class="btn-row">
+                <button id="btnSt400" type="button" class="btn btn-st st-4xx">400 Bad Request</button>
+                <button id="btnSt401" type="button" class="btn btn-st st-4xx">401 Unauthorized</button>
+                <button id="btnSt403" type="button" class="btn btn-st st-4xx">403 Forbidden</button>
+                <button id="btnSt404" type="button" class="btn btn-st st-4xx">404 Not Found</button>
+                <button id="btnSt429" type="button" class="btn btn-st st-4xx">429 Rate Limit (нажми 4 раза!)</button>
+                <button id="btnReset429" type="button" class="btn btn-ghost btn-sm">Сбросить лимит 429</button>
+              </div>
+            </div>
+
+            <div class="status-group">
+              <h3>5xx — Ошибка сервера</h3>
+              <div class="btn-row">
+                <button id="btnSt500" type="button" class="btn btn-st st-5xx">500 Internal Server Error</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="statusExplainCard" class="explain-card">
+            Нажми любую кнопку выше, чтобы увидеть объяснение статус-кода и подсказку для DevTools.
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- ВКЛАДКА 3: COOKIES, СЕССИИ И JWT -->
+      <!-- ============================================================ -->
+      <div id="tab-auth" class="tab-panel">
+        <div class="card">
+          <div class="card-head">
+            <h2>3A. Cookies (HttpOnly vs обычные) и Серверные сессии</h2>
+            <span class="tag tag-cyan">Application → Cookies</span>
+          </div>
+          <p class="muted">При входе сервер ставит сразу 2 cookie: <code>public_user</code> (доступна из JS) и <code>lab_session</code> (с флагом <code>HttpOnly</code> — защищена от кражи через JS).</p>
+
+          <div class="btn-row">
+            <button id="btnFillStudent" type="button" class="btn btn-ghost btn-sm">Подставить: student / 1234</button>
+            <button id="btnFillMentor" type="button" class="btn btn-ghost btn-sm">Подставить: mentor / admin123</button>
+            <button id="btnFillWrong" type="button" class="btn btn-ghost btn-sm">Подставить неверный пароль (401)</button>
+          </div>
+
+          <div class="form-row">
+            <label class="field">
+              <span>Логин (username)</span>
+              <input id="loginUsername" type="text" value="student">
+            </label>
+            <label class="field">
+              <span>Пароль (password)</span>
+              <input id="loginPassword" type="password" value="1234">
+            </label>
+          </div>
+
+          <div class="btn-row">
+            <button id="btnLogin" type="button" class="btn btn-primary">Войти (POST /api/auth/login)</button>
+            <button id="btnCheckMe" type="button" class="btn btn-ghost">Кто я? (/api/auth/me)</button>
+            <button id="btnAdminPanel" type="button" class="btn btn-amber">Зайти в панель наставника (/admin-panel)</button>
+            <button id="btnReadJsCookies" type="button" class="btn btn-ghost">Прочитать document.cookie</button>
+            <button id="btnLogout" type="button" class="btn btn-danger">Выйти</button>
+          </div>
+
+          <div id="authStateBox" class="explain-card">
+            Статус сессии ещё не проверялся. Нажми «Войти» или «Кто я?».
+          </div>
+
+          <div class="subbox">
+            <strong>Что видит JavaScript через <code>document.cookie</code>:</strong>
+            <pre id="jsCookieOutput" class="mono-box">(нажми «Прочитать document.cookie» после входа)</pre>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>3B. Интерактивный разборщик JWT (Header.Payload.Signature)</h2>
+            <span class="tag tag-amber">localStorage</span>
+          </div>
+          <p class="muted">JWT сохраняется в <code>localStorage</code> (открой <code>Application → Local Storage</code>). Первые 2 части легко прочитать в Base64 — но попробуй подменить роль и проверить реакцию сервера!</p>
+
+          <label class="field">
+            <span>Токен JWT (Header.Payload.Signature)</span>
+            <textarea id="jwtRawInput" rows="3" placeholder="Сначала войди в аккаунт выше, чтобы получить JWT..."></textarea>
+          </label>
+
+          <div class="btn-row">
+            <button id="btnTamperJwt" type="button" class="btn btn-amber">Подменить роль на "mentor" в Payload</button>
+            <button id="btnVerifyJwt" type="button" class="btn btn-primary">Отправить JWT на проверку серверу</button>
+          </div>
+
+          <div class="jwt-parts">
+            <div class="jwt-part jwt-h">
+              <div class="jwt-lbl">1. Header (Алгоритм)</div>
+              <pre id="jwtHeaderOut">{}</pre>
+            </div>
+            <div class="jwt-part jwt-p">
+              <div class="jwt-lbl">2. Payload (Данные — не зашифрованы!)</div>
+              <pre id="jwtPayloadOut">{}</pre>
+            </div>
+            <div class="jwt-part jwt-s">
+              <div class="jwt-lbl">3. Signature (Крипто-подпись сервера)</div>
+              <pre id="jwtSigOut">—</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- ВКЛАДКА 4: КЛИЕНТ VS СЕРВЕР -->
+      <!-- ============================================================ -->
+      <div id="tab-clientserver" class="tab-panel">
+        <div class="card">
+          <div class="card-head">
+            <h2>4. Золотое правило: Клиент vs Сервер</h2>
+            <span class="tag tag-red">Бизнес-логика</span>
+          </div>
+          <p class="muted">Представь интернет-магазин. Настоящая цена курса на сервере — <strong>15 000 руб.</strong> Переключай режим работы сервера и попробуй «купить» курс за 1 руб. или с отрицательным количеством.</p>
+
+          <div class="mode-switch">
+            <label class="radio-card">
+              <input type="radio" name="csMode" value="naive">
+              <span><strong>Наивный сервер (ОПАСНО)</strong><br><small>Доверяет цене и количеству из браузера</small></span>
+            </label>
+            <label class="radio-card">
+              <input type="radio" name="csMode" value="safe" checked>
+              <span><strong>Защищённый сервер (ПРАВИЛЬНО)</strong><br><small>Игнорирует цену клиента и берёт её из БД</small></span>
+            </label>
+          </div>
+
+          <div class="shop-demo">
+            <div class="shop-item">
+              <div class="shop-title">Курс: Сайты с ИИ и AppSec</div>
+              <div class="shop-price">Цена по прайсу сервера: <strong>15 000 руб.</strong></div>
+            </div>
+            <input type="hidden" id="csHiddenDiscount" value="0" data-note="Любое hidden-поле легко поменять в F12 -> Elements">
+            <div class="form-row">
+              <label class="field">
+                <span>Цена, отправляемая клиентом (price)</span>
+                <input id="csPriceInput" type="number" value="15000">
+              </label>
+              <label class="field">
+                <span>Количество (qty)</span>
+                <input id="csQtyInput" type="number" value="1">
+              </label>
+            </div>
+            <div class="btn-row">
+              <button id="btnTamperPrice" type="button" class="btn btn-amber">Подменить цену на 1 руб.</button>
+              <button id="btnBuyDemo" type="button" class="btn btn-primary">Оформить заказ (POST /api/quests/buy-demo)</button>
+            </div>
+          </div>
+
+          <div id="csResultBox" class="explain-card">
+            Выбери режим и нажми «Оформить заказ», затем посмотри результат и запрос в <code>Network</code>.
+          </div>
+
+          <div class="code-compare">
+            <div class="code-col code-bad">
+              <h4>Плохой код (доверяет клиенту)</h4>
+              <pre>total = data["price"] * data["qty"]</pre>
+            </div>
+            <div class="code-col code-good">
+              <h4>Правильный код (сверяет на сервере)</h4>
+              <pre>if qty &lt; 1: return 400
+real_price = SERVER_CATALOG["course"]["price"]
+total = real_price * qty</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================ -->
+      <!-- ВКЛАДКА 5: 6 КВЕСТОВ DEVTOOLS -->
+      <!-- ============================================================ -->
+      <div id="tab-quests" class="tab-panel">
+        <div class="card">
+          <div class="card-head">
+            <h2>5. Практические квесты для DevTools (F12)</h2>
+            <span class="tag tag-green">Практика</span>
+          </div>
+          <p class="muted">Пройди все 6 мини-заданий руками через <code>F12</code>. Как только найдёшь ответ или флаг (формата <code>FLAG-...</code>) — впиши его в поле и нажми «Проверить».</p>
+        </div>
+
+        <!-- Квест 1 -->
+        <div class="card quest-card" data-quest="1">
+          <div class="quest-top">
+            <h3>Квест 1. Инспектор страницы (вкладка Elements)</h3>
+            <span id="qStatus1" class="q-status">Не пройден</span>
+          </div>
+          <p>Открой вкладку <code>Elements</code> в DevTools (или нажми правой кнопкой мыши по цветному блоку ниже → <em>«Просмотреть код»</em>). Найди скрытый HTML-атрибут <code>data-secret-flag</code> и попробуй прямо в DevTools изменить видимый текст внутри блока.</p>
+          <div id="secretDomBox" class="secret-dom-box" data-secret-flag="FLAG-DOM-101">
+            Нажми на меня правой кнопкой → «Просмотреть код» (Elements), чтобы найти скрытый атрибут!
+          </div>
+          <div class="quest-check">
+            <input id="qInput1" type="text" placeholder="Введи найденный флаг (FLAG-...)">
+            <button type="button" class="btn btn-primary btn-sm" data-check-quest="1">Проверить</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-hint-quest="1">Подсказка</button>
+          </div>
+          <div id="qFeedback1" class="q-feedback"></div>
+        </div>
+
+        <!-- Квест 2 -->
+        <div class="card quest-card" data-quest="2">
+          <div class="quest-top">
+            <h3>Квест 2. Секрет в заголовках ответа (Network → Headers)</h3>
+            <span id="qStatus2" class="q-status">Не пройден</span>
+          </div>
+          <p>Нажми кнопку ниже: сервер вернёт JSON, но сам флаг спрячет не в тексте ответа, а в HTTP-заголовке <code>X-DevTools-Flag</code> внутри раздела <strong>Response Headers</strong>.</p>
+          <div class="btn-row">
+            <button id="btnQuestHeaderClue" type="button" class="btn btn-primary btn-sm">Выполнить секретный запрос</button>
+          </div>
+          <div class="quest-check">
+            <input id="qInput2" type="text" placeholder="Введи значение X-DevTools-Flag">
+            <button type="button" class="btn btn-primary btn-sm" data-check-quest="2">Проверить</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-hint-quest="2">Подсказка</button>
+          </div>
+          <div id="qFeedback2" class="q-feedback"></div>
+        </div>
+
+        <!-- Квест 3 -->
+        <div class="card quest-card" data-quest="3">
+          <div class="quest-top">
+            <h3>Квест 3. Поймать редирект с Keep log (Network)</h3>
+            <span id="qStatus3" class="q-status">Не пройден</span>
+          </div>
+          <p>Открой <code>F12 → Network</code> и поставь галочку <code>Keep log</code> (<code>Preserve log</code>). Нажми кнопку ниже — страница перезагрузится через настоящий статус <code>302</code>. Без <code>Keep log</code> первый запрос пропал бы, а с ним ты увидишь строчку <code>302-page</code>!</p>
+          <div class="btn-row">
+            <button id="btnQuest302Page" type="button" class="btn btn-amber btn-sm">Запустить редирект страницы (302)</button>
+          </div>
+          <div class="quest-check">
+            <input id="qInput3" type="text" placeholder="Какой статус-код у запроса 302-page? (число)">
+            <button type="button" class="btn btn-primary btn-sm" data-check-quest="3">Проверить</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-hint-quest="3">Подсказка</button>
+          </div>
+          <div id="qFeedback3" class="q-feedback"></div>
+        </div>
+
+        <!-- Квест 4 -->
+        <div class="card quest-card" data-quest="4">
+          <div class="quest-top">
+            <h3>Квест 4. Защищённая Cookie (Application → Cookies vs Console)</h3>
+            <span id="qStatus4" class="q-status">Не пройден</span>
+          </div>
+          <p>Войди во вкладке <strong>3. Cookies, Сессии и JWT</strong> как <code>student</code>. Нажми «Прочитать document.cookie», а затем открой <code>F12 → Application → Cookies</code>. Впиши имя той cookie, у которой стоит галочка <strong>HttpOnly</strong> и которой нет в <code>document.cookie</code>.</p>
+          <div class="quest-check">
+            <input id="qInput4" type="text" placeholder="Имя защищённой cookie">
+            <button type="button" class="btn btn-primary btn-sm" data-check-quest="4">Проверить</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-hint-quest="4">Подсказка</button>
+          </div>
+          <div id="qFeedback4" class="q-feedback"></div>
+        </div>
+
+        <!-- Квест 5 -->
+        <div class="card quest-card" data-quest="5">
+          <div class="quest-top">
+            <h3>Квест 5. Проверка ролей на сервере (403 → 200)</h3>
+            <span id="qStatus5" class="q-status">Не пройден</span>
+          </div>
+          <p>Во вкладке 3 попробуй зайти в <code>/admin-panel</code> под <code>student</code> — увидишь <code>403 Forbidden</code>. Затем войди под наставником (<code>mentor</code> / <code>admin123</code>), снова открой панель и найди флаг в JSON-ответе.</p>
+          <div class="quest-check">
+            <input id="qInput5" type="text" placeholder="Флаг из ответа /admin-panel (FLAG-...)">
+            <button type="button" class="btn btn-primary btn-sm" data-check-quest="5">Проверить</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-hint-quest="5">Подсказка</button>
+          </div>
+          <div id="qFeedback5" class="q-feedback"></div>
+        </div>
+
+        <!-- Квест 6 -->
+        <div class="card quest-card" data-quest="6">
+          <div class="quest-top">
+            <h3>Квест 6. Поймать защиту от перебора (429 Too Many Requests)</h3>
+            <span id="qStatus6" class="q-status">Не пройден</span>
+          </div>
+          <p>Нажми кнопку ниже быстро 4 раза за 10 секунд (или сделай это во вкладке «2. Статус-коды»): первые 3 раза сервер ответит <code>200</code>, а на 4-й вернёт настоящий <code>429</code> с заголовком <code>Retry-After</code>.</p>
+          <div class="btn-row">
+            <button id="btnQuest429Quick" type="button" class="btn btn-amber btn-sm">Отправить запрос к /api/status/429</button>
+            <button id="btnQuest429Reset" type="button" class="btn btn-ghost btn-sm">Сбросить счётчик</button>
+          </div>
+          <div class="quest-check">
+            <input id="qInput6" type="text" placeholder="Какой статус вернул сервер на 4-й попытке?">
+            <button type="button" class="btn btn-primary btn-sm" data-check-quest="6">Проверить</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-hint-quest="6">Подсказка</button>
+          </div>
+          <div id="qFeedback6" class="q-feedback"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- БОКОВОЕ «ЗЕРКАЛО DEVTOOLS» -->
+    <!-- ============================================================ -->
+    <aside class="inspector" aria-label="Живой монитор запроса">
+      <div class="inspector-card">
+        <div class="inspector-head">
+          <h2>Зеркало HTTP-ответа</h2>
+          <span id="inspectorStatus" class="status-pill status-idle">Ожидание</span>
+        </div>
+        <div id="inspectorMeta" class="inspector-meta">Выполни любое действие слева — здесь появится разбор запроса, который можно сверить с <code>F12 → Network</code>.</div>
+
+        <div id="devtoolsHintBox" class="hint-banner">
+          <strong>Где смотреть в F12:</strong>
+          <span id="devtoolsHintText">Открой <code>F12 → Network</code> и нажми любую кнопку на тренажёре.</span>
+        </div>
+
+        <div class="inspector-section">
+          <div class="sec-label">Response Headers (заголовки ответа)</div>
+          <pre id="inspectorHeaders" class="mono-box small-pre">—</pre>
+        </div>
+
+        <div class="inspector-section">
+          <div class="sec-label">Response Body (тело ответа)</div>
+          <pre id="inspectorBody" class="mono-box code-pre">{}</pre>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
